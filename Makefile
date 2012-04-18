@@ -1,5 +1,5 @@
 CXX 		:= g++
-CXX_FLAGS 	:= -Wall -g -std=c++11
+CXX_FLAGS 	:= -Wall -g -std=c++0x
 SRCS		:= process_test.cpp Process.cpp
 OBJS 		:= $(SRCS:.cpp=.o)
 
