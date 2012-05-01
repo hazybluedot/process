@@ -1,9 +1,23 @@
+#include <cstring>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include "Process.hpp"
 #include <algorithm>
+#include <stdexcept>
+
+void throw_runtime(std::string w, int err=0)
+{
+    std::string what(w);
+    if (err != 0)
+    {
+	char buffer[100];
+	sprintf(buffer, ": %s\n", strerror(err));
+	what.append(buffer);
+    } 
+    throw std::runtime_error(what);
+}
 
 Process::Process(const std::vector<std::string>& argss, bool verbose) : 
     verbose(verbose), 
@@ -14,16 +28,18 @@ Process::Process(const std::vector<std::string>& argss, bool verbose) :
     m_pwrite((FILE*)NULL),
     m_pread((FILE*)NULL)
 {
+    if (argss.size() <= 0)
+    {
+	throw_runtime("Need at least 1 argument");
+    }
     if (pipe(m_writepipe) < 0 || pipe(m_readpipe) < 0)
     {
-	perror("pipe");
-	throw std::string("Pipe");
+	throw_runtime("Pipe:",errno);
     }
 
     if ((m_pid = fork()) < 0)
     {
-	perror("Process fork");
-	throw std::string("Process fork");
+	throw_runtime("Process fork", errno);
     } else if ( m_pid == 0 ) {
 	/* child process */
 	close(PARENT_READ);
@@ -37,8 +53,7 @@ Process::Process(const std::vector<std::string>& argss, bool verbose) :
 		       } );
 	args.push_back( NULL );
 	execvp(args[0], const_cast<char**>(&args[0]));
-	perror("Process execvp");
-	throw std::string("Process execvp");
+	throw_runtime("Process execvp",errno);
     } else { 
 	/* parent process */
 	if (verbose)
@@ -74,11 +89,10 @@ void Process::write(const std::string& line)
 
 std::string Process::read()
 {
-    std::string line;
     char* mystring = NULL;
     size_t num_bytes;
 
     getline(&mystring, &num_bytes, m_pread);
-    line = mystring;
+    std::string line(mystring);
     return line;
 }
